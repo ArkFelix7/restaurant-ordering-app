@@ -81,15 +81,15 @@ npm run dev
 | Client menu browsing | ✅ | ✅ |
 | Shopping cart | ✅ | ✅ |
 | Order submission | ✅ | ✅ |
-| Order status tracking | ✅ | ✅ + Real-time |
-| Admin authentication | ✅ | ✅ Supabase |
-| Inventory management | ✅ | ✅ + Low stock alerts |
-| Menu management | ✅ | ✅ + Inventory mapping |
-| Orders dashboard | ✅ | ✅ + Statistics |
-| Approve/decline orders | ✅ | ✅ + Prep time |
-| Mark completed | ✅ | ✅ + Auto-deduct inventory |
-| Order history | ✅ | ✅ + Filtering |
-| Real-time updates | Optional | ✅ **Supabase Realtime** |
+| Order status tracking | ✅ | ✅ |
+| Admin authentication | ✅ | ✅  |
+| Inventory management | ✅ | ✅ |
+| Menu management | ✅ | ✅ |
+| Orders dashboard | ✅ | ✅ |
+| Approve/decline orders | ✅ | ✅ |
+| Mark completed | ✅ | ✅ |
+| Order history | ✅ | ✅ |
+| Real-time updates | Optional | ✅ |
 
 ### 🎯 Advanced Features
 - **Automatic Inventory Deduction**: When orders complete, system automatically calculates and deducts required ingredients
