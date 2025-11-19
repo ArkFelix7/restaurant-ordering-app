@@ -179,10 +179,10 @@ export default function ImageUpload({
           </div>
         ) : (
           <div
-            className={`relative w-full ${getAspectRatioClass()} min-h-[200px] flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer`}
+            className={`relative w-full ${getAspectRatioClass()} ${aspectRatio === 'auto' ? 'min-h-[180px]' : 'min-h-0'} flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer`}
             onClick={handleButtonClick}
           >
-            <ImageIcon className="h-12 w-12 text-muted-foreground mb-2" />
+            <ImageIcon className="h-10 w-10 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">Click to upload image</p>
             <p className="text-xs text-muted-foreground mt-1">
               PNG, JPG, WEBP up to {maxSizeMB}MB

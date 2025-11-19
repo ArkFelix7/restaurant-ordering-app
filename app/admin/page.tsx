@@ -375,7 +375,7 @@ export default function AdminDashboard() {
       </main>
 
       <Dialog open={approveDialog.open} onOpenChange={(open) => setApproveDialog({ open, orderId: null })}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Approve Order</DialogTitle>
           </DialogHeader>
@@ -402,7 +402,7 @@ export default function AdminDashboard() {
       </Dialog>
 
       <Dialog open={declineDialog.open} onOpenChange={(open) => setDeclineDialog({ open, orderId: null })}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Decline Order</DialogTitle>
           </DialogHeader>
