@@ -46,6 +46,12 @@ export default function MenuManagementPage() {
   const [mappingDialogOpen, setMappingDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
   const [itemMappings, setItemMappings] = useState<ItemInventoryMapping[]>([])
+  const [addMappingMode, setAddMappingMode] = useState(false)
+  const [newMapping, setNewMapping] = useState({
+    inventory_id: '',
+    quantity_required: ''
+  })
+  const [mappingCounts, setMappingCounts] = useState<Record<string, number>>({})
   
   const supabase = createClient()
 
@@ -64,15 +70,25 @@ export default function MenuManagementPage() {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [itemsRes, categoriesRes, inventoryRes] = await Promise.all([
+      const [itemsRes, categoriesRes, inventoryRes, mappingsRes] = await Promise.all([
         supabase.from('items').select('*').order('display_order'),
         supabase.from('categories').select('*').order('display_order'),
         supabase.from('inventory').select('*').order('name'),
+        supabase.from('item_inventory_mapping').select('item_id'),
       ])
 
       if (itemsRes.data) setMenuItems(itemsRes.data)
       if (categoriesRes.data) setCategories(categoriesRes.data)
       if (inventoryRes.data) setInventory(inventoryRes.data)
+      
+      // Count mappings per item
+      if (mappingsRes.data) {
+        const counts: Record<string, number> = {}
+        mappingsRes.data.forEach((mapping) => {
+          counts[mapping.item_id] = (counts[mapping.item_id] || 0) + 1
+        })
+        setMappingCounts(counts)
+      }
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -194,6 +210,8 @@ export default function MenuManagementPage() {
 
   const openMappingDialog = async (item: MenuItem) => {
     setSelectedItem(item)
+    setAddMappingMode(false)
+    setNewMapping({ inventory_id: '', quantity_required: '' })
     try {
       const { data, error } = await supabase
         .from('item_inventory_mapping')
@@ -205,6 +223,103 @@ export default function MenuManagementPage() {
       setMappingDialogOpen(true)
     } catch (error) {
       console.error('Error loading mappings:', error)
+    }
+  }
+
+  const handleAddMapping = async () => {
+    if (!selectedItem || !newMapping.inventory_id || !newMapping.quantity_required) {
+      alert('Please select an inventory item and enter quantity')
+      return
+    }
+
+    // Check if mapping already exists
+    const existingMapping = itemMappings.find(
+      (m) => m.inventory_id === newMapping.inventory_id
+    )
+    if (existingMapping) {
+      alert('This inventory item is already mapped to this menu item')
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('item_inventory_mapping')
+        .insert([
+          {
+            item_id: selectedItem.id,
+            inventory_id: newMapping.inventory_id,
+            quantity_required: parseFloat(newMapping.quantity_required),
+          },
+        ])
+        .select('*, inventory(*)')
+        .single()
+
+      if (error) throw error
+      if (data) {
+        setItemMappings([...itemMappings, data])
+        setNewMapping({ inventory_id: '', quantity_required: '' })
+        setAddMappingMode(false)
+        // Update mapping count
+        if (selectedItem) {
+          setMappingCounts({
+            ...mappingCounts,
+            [selectedItem.id]: (mappingCounts[selectedItem.id] || 0) + 1
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error adding mapping:', error)
+      alert('Failed to add inventory mapping')
+    }
+  }
+
+  const handleDeleteMapping = async (mappingId: string) => {
+    if (!confirm('Are you sure you want to remove this inventory mapping?')) return
+
+    try {
+      const { error } = await supabase
+        .from('item_inventory_mapping')
+        .delete()
+        .eq('id', mappingId)
+
+      if (error) throw error
+      setItemMappings(itemMappings.filter((m) => m.id !== mappingId))
+      // Update mapping count
+      if (selectedItem) {
+        setMappingCounts({
+          ...mappingCounts,
+          [selectedItem.id]: Math.max(0, (mappingCounts[selectedItem.id] || 0) - 1)
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting mapping:', error)
+      alert('Failed to delete inventory mapping')
+    }
+  }
+
+  const handleUpdateMapping = async (mappingId: string, newQuantity: string) => {
+    const quantity = parseFloat(newQuantity)
+    if (isNaN(quantity) || quantity <= 0) {
+      alert('Please enter a valid quantity')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('item_inventory_mapping')
+        .update({ quantity_required: quantity })
+        .eq('id', mappingId)
+
+      if (error) throw error
+
+      setItemMappings(
+        itemMappings.map((m) =>
+          m.id === mappingId ? { ...m, quantity_required: quantity } : m
+        )
+      )
+    } catch (error) {
+      console.error('Error updating mapping:', error)
+      alert('Failed to update inventory mapping')
     }
   }
 
@@ -249,6 +364,22 @@ export default function MenuManagementPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {/* Info Banner */}
+        <Card className="mb-6 border-blue-500/50 bg-blue-500/5">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <Package2 className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-sm mb-1">Manage Inventory Mappings</p>
+                <p className="text-sm text-muted-foreground">
+                  Click the <strong className="text-foreground">"Inventory"</strong> button on any menu item to map raw ingredients. 
+                  When orders are completed, inventory will automatically deduct based on these mappings.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Menu Items</CardTitle>
@@ -283,7 +414,14 @@ export default function MenuManagementPage() {
                               />
                             </div>
                             <div>
-                              <div className="font-medium">{item.name}</div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{item.name}</span>
+                                {mappingCounts[item.id] > 0 && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {mappingCounts[item.id]} ingredient{mappingCounts[item.id] > 1 ? 's' : ''}
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="text-sm text-muted-foreground line-clamp-1">
                                 {item.description}
                               </div>
@@ -311,12 +449,13 @@ export default function MenuManagementPage() {
                         <TableCell className="text-right">
                           <div className="flex items-center gap-2 justify-end">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => openMappingDialog(item)}
-                              title="Manage inventory mappings"
+                              className="gap-1"
                             >
-                              <LinkIcon className="h-4 w-4" />
+                              <Package2 className="h-4 w-4" />
+                              <span className="hidden sm:inline">Inventory</span>
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => openEditDialog(item)}>
                               <Edit className="h-4 w-4" />
@@ -548,34 +687,147 @@ export default function MenuManagementPage() {
 
       {/* Inventory Mapping Dialog */}
       <Dialog open={mappingDialogOpen} onOpenChange={setMappingDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Inventory Mappings for {selectedItem?.name}</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            {itemMappings.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No inventory mappings configured
-              </p>
+          <div className="py-4 space-y-4">
+            {/* Existing Mappings */}
+            {itemMappings.length === 0 && !addMappingMode ? (
+              <div className="text-center py-8">
+                <Package2 className="h-12 w-12 mx-auto text-muted-foreground mb-2 opacity-50" />
+                <p className="text-sm text-muted-foreground">
+                  No inventory mappings configured
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Add inventory items to track raw material usage
+                </p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {itemMappings.map((mapping) => (
-                  <div
-                    key={mapping.id}
-                    className="flex items-center justify-between p-3 border rounded"
-                  >
-                    <div>
-                      <p className="font-medium">{mapping.inventory?.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Requires: {mapping.quantity_required} {mapping.inventory?.unit}
-                      </p>
-                    </div>
-                  </div>
+                  <Card key={mapping.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="relative h-12 w-12 flex-shrink-0 rounded overflow-hidden">
+                          <Image
+                            src={mapping.inventory?.image_url || '/placeholder.svg'}
+                            alt={mapping.inventory?.name || ''}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium">{mapping.inventory?.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              defaultValue={mapping.quantity_required}
+                              onBlur={(e) => {
+                                if (e.target.value !== mapping.quantity_required.toString()) {
+                                  handleUpdateMapping(mapping.id, e.target.value)
+                                }
+                              }}
+                              className="h-8 w-24"
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {mapping.inventory?.unit}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteMapping(mapping.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
+
+            {/* Add New Mapping Form */}
+            {addMappingMode && (
+              <Card className="border-2 border-primary">
+                <CardContent className="p-4 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="inventory-select">Select Inventory Item</Label>
+                    <Select
+                      value={newMapping.inventory_id}
+                      onValueChange={(value) =>
+                        setNewMapping({ ...newMapping, inventory_id: value })
+                      }
+                    >
+                      <SelectTrigger id="inventory-select">
+                        <SelectValue placeholder="Choose an inventory item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {inventory
+                          .filter(
+                            (inv) =>
+                              !itemMappings.some((m) => m.inventory_id === inv.id)
+                          )
+                          .map((inv) => (
+                            <SelectItem key={inv.id} value={inv.id}>
+                              {inv.name} ({inv.quantity_available} {inv.unit} available)
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity-required">Quantity Required</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="quantity-required"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="0.00"
+                        value={newMapping.quantity_required}
+                        onChange={(e) =>
+                          setNewMapping({ ...newMapping, quantity_required: e.target.value })
+                        }
+                      />
+                      {newMapping.inventory_id && (
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">
+                          {inventory.find((inv) => inv.id === newMapping.inventory_id)?.unit}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleAddMapping} className="flex-1">
+                      Add Mapping
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setAddMappingMode(false)
+                        setNewMapping({ inventory_id: '', quantity_required: '' })
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={() => setAddMappingMode(!addMappingMode)}
+              disabled={addMappingMode}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Inventory Item
+            </Button>
             <Button onClick={() => setMappingDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>

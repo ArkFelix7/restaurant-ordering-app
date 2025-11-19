@@ -206,6 +206,7 @@ export default function OrderHistoryPage() {
                       <TableHead>Order ID</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Customer</TableHead>
+                      <TableHead>Items</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -218,8 +219,12 @@ export default function OrderHistoryPage() {
                           #{order.id.slice(0, 8)}
                         </TableCell>
                         <TableCell>
-                          {new Date(order.created_at).toLocaleDateString()}{' '}
-                          {new Date(order.created_at).toLocaleTimeString()}
+                          <div className="text-sm">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(order.created_at).toLocaleTimeString()}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div>
@@ -227,6 +232,31 @@ export default function OrderHistoryPage() {
                             <div className="text-sm text-muted-foreground">
                               {order.customer_phone}
                             </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-xs">
+                            {order.order_items && order.order_items.length > 0 ? (
+                              <>
+                                <div className="text-sm font-medium mb-1">
+                                  {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'items'}
+                                </div>
+                                <div className="text-xs text-muted-foreground space-y-0.5">
+                                  {order.order_items.slice(0, 2).map((item, idx) => (
+                                    <div key={idx} className="truncate">
+                                      {item.quantity}× {item.item_name}
+                                    </div>
+                                  ))}
+                                  {order.order_items.length > 2 && (
+                                    <div className="text-xs text-muted-foreground italic">
+                                      +{order.order_items.length - 2} more
+                                    </div>
+                                  )}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">No items</span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="font-bold">
