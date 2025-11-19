@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Auth Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Supabase Authentication Test</h1>
+  <div id="results"></div>
+
+  <script>
+    const { createClient } = supabase;
+    
+    // Your Supabase credentials
+    const supabaseClient = createClient(
+      'https://fnhuvwcoeqbrfocfmdbw.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZuaHV2d2NvZXFicmZvY2ZtZGJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM0OTk3NDcsImV4cCI6MjA3OTA3NTc0N30.pPDVdmaArffOzdZto9DEM4ZnxMvL87XpNdjZMGoKKgY'
+    );
+
+    async function testAuth() {
+      const results = document.getElementById('results');
+      
+      // Test 1: Check session
+      results.innerHTML += '<h2>Test 1: Check Session</h2>';
+      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+      
+      if (session) {
+        results.innerHTML += `<p style="color: green;">✅ Session exists</p>`;
+        results.innerHTML += `<p>User ID: ${session.user.id}</p>`;
+        results.innerHTML += `<p>Email: ${session.user.email}</p>`;
+        results.innerHTML += `<p>Access Token: ${session.access_token.substring(0, 50)}...</p>`;
+      } else {
+        results.innerHTML += `<p style="color: red;">❌ No session found</p>`;
+        results.innerHTML += `<p>Error: ${sessionError?.message || 'Not logged in'}</p>`;
+        return;
+      }
+
+      // Test 2: Try SELECT query
+      results.innerHTML += '<h2>Test 2: SELECT Query</h2>';
+      const { data: selectData, error: selectError } = await supabaseClient
+        .from('items')
+        .select('id, name')
+        .limit(1);
+      
+      if (selectError) {
+        results.innerHTML += `<p style="color: red;">❌ SELECT failed: ${selectError.message}</p>`;
+      } else {
+        results.innerHTML += `<p style="color: green;">✅ SELECT works</p>`;
+        results.innerHTML += `<p>First item: ${JSON.stringify(selectData[0])}</p>`;
+      }
+
+      // Test 3: Try UPDATE query
+      if (selectData && selectData[0]) {
+        results.innerHTML += '<h2>Test 3: UPDATE Query</h2>';
+        const { data: updateData, error: updateError } = await supabaseClient
+          .from('items')
+          .update({ name: selectData[0].name }) // No actual change
+          .eq('id', selectData[0].id)
+          .select();
+        
+        if (updateError) {
+          results.innerHTML += `<p style="color: red;">❌ UPDATE failed: ${updateError.message}</p>`;
+          results.innerHTML += `<p>Details: ${JSON.stringify(updateError, null, 2)}</p>`;
+        } else {
+          results.innerHTML += `<p style="color: green;">✅ UPDATE works!</p>`;
+          results.innerHTML += `<p>Updated item: ${JSON.stringify(updateData[0])}</p>`;
+        }
+      }
+    }
+
+    // Run test on page load
+    testAuth();
+  </script>
+</body>
+</html>

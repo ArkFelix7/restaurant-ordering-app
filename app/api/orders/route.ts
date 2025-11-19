@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
   try {
+    const supabase = createAdminClient()
     const body = await request.json()
 
     // Create order
@@ -57,6 +53,7 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
+    const supabase = createAdminClient()
     const { data: orders, error } = await supabase
       .from('orders')
       .select('*')

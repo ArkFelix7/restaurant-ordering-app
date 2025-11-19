@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { createAdminClient } from '@/lib/supabase/server'
 
 // Helper function to deduct inventory when order is completed
 async function deductInventory(orderId: string) {
+  const supabase = createAdminClient()
   try {
     // Get order items
     const { data: orderItems, error: itemsError } = await supabase
@@ -60,17 +56,29 @@ async function deductInventory(orderId: string) {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = createAdminClient()
     const body = await request.json()
-    const orderId = params.id
+    const { id: orderId } = await params
 
     if (body.action === 'approve') {
       const preparationTime = body.preparation_time
-      const estimatedReadyAt = new Date(
-        Date.now() + preparationTime * 60000
-      ).toISOString()
+      const now = new Date()
+      const readyTime = new Date(now.getTime() + (preparationTime * 60000))
+      const estimatedReadyAt = readyTime.toISOString()
+
+      console.log('Order approval - Time calculation:', {
+        orderId,
+        preparationTime,
+        now: now.toISOString(),
+        readyTime: readyTime.toISOString(),
+        estimatedReadyAt,
+        calculatedMs: preparationTime * 60000,
+        nowMs: now.getTime(),
+        readyTimeMs: readyTime.getTime()
+      })
 
       const { data, error } = await supabase
         .from('orders')
@@ -84,6 +92,12 @@ export async function PATCH(
         .single()
 
       if (error) throw error
+
+      console.log('Saved to DB:', {
+        id: data.id,
+        preparation_time: data.preparation_time,
+        estimated_ready_at: data.estimated_ready_at
+      })
 
       return NextResponse.json(data)
     } else if (body.action === 'decline') {
@@ -128,13 +142,15 @@ export async function PATCH(
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = createAdminClient()
+    const { id } = await params
     const { data: order, error } = await supabase
       .from('orders')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) throw error

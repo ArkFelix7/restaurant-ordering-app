@@ -42,10 +42,17 @@ export default function AdminDashboard() {
     setIsLoading(true)
     try {
       const response = await fetch('/api/orders')
+      if (!response.ok) {
+        console.error('Failed to fetch orders:', response.status, response.statusText)
+        setOrders([])
+        return
+      }
       const data = await response.json()
-      setOrders(data)
+      // Ensure data is an array
+      setOrders(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching orders:', error)
+      setOrders([])
     } finally {
       setIsLoading(false)
     }
@@ -159,13 +166,16 @@ export default function AdminDashboard() {
     }
   }
 
-  const activeOrders = orders.filter((o) => o.status !== 'completed')
-  const completedOrders = orders.filter((o) => o.status === 'completed')
+  // Ensure orders is always an array before filtering
+  const safeOrders = Array.isArray(orders) ? orders : []
+  
+  const activeOrders = safeOrders.filter((o) => o.status !== 'completed')
+  const completedOrders = safeOrders.filter((o) => o.status === 'completed')
 
   const stats = {
-    pending: orders.filter((o) => o.status === 'pending').length,
-    approved: orders.filter((o) => o.status === 'approved').length,
-    total: orders.reduce((sum, o) => sum + o.total_amount, 0),
+    pending: safeOrders.filter((o) => o.status === 'pending').length,
+    approved: safeOrders.filter((o) => o.status === 'approved').length,
+    total: safeOrders.reduce((sum, o) => sum + o.total_amount, 0),
   }
 
   return (

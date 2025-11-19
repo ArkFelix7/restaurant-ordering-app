@@ -1,67 +1,68 @@
 -- Setup Supabase Storage Buckets for Image Uploads
--- Run this script in your Supabase SQL Editor
+-- IMPORTANT: Create buckets through Supabase Dashboard UI instead of SQL
 
--- Create storage buckets
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES 
-  ('menu-images', 'menu-images', true, 5242880, ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']),
-  ('inventory-images', 'inventory-images', true, 5242880, ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'])
-ON CONFLICT (id) DO NOTHING;
+/*
+===========================================
+SETUP INSTRUCTIONS (Use Dashboard UI)
+===========================================
 
--- Public read access for menu images
-CREATE POLICY IF NOT EXISTS "Public Access to Menu Images"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'menu-images');
+Step 1: Go to Storage in Supabase Dashboard
+   https://supabase.com/dashboard/project/YOUR_PROJECT/storage/buckets
 
--- Public read access for inventory images
-CREATE POLICY IF NOT EXISTS "Public Access to Inventory Images"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'inventory-images');
+Step 2: Create Menu Images Bucket
+   - Click "New Bucket"
+   - Name: menu-images
+   - Public bucket: ✅ YES (checked)
+   - File size limit: 5 MB
+   - Allowed MIME types: image/jpeg, image/png, image/webp, image/gif
+   - Click "Create bucket"
 
--- Allow authenticated users to upload menu images
-CREATE POLICY IF NOT EXISTS "Authenticated users can upload menu images"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'menu-images');
+Step 3: Create Inventory Images Bucket
+   - Click "New Bucket"
+   - Name: inventory-images
+   - Public bucket: ✅ YES (checked)
+   - File size limit: 5 MB
+   - Allowed MIME types: image/jpeg, image/png, image/webp, image/gif
+   - Click "Create bucket"
 
--- Allow authenticated users to upload inventory images
-CREATE POLICY IF NOT EXISTS "Authenticated users can upload inventory images"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'inventory-images');
+Step 4: Verify Both Buckets
+   - You should see:
+     ✅ menu-images (public)
+     ✅ inventory-images (public)
 
--- Allow authenticated users to update their uploaded menu images
-CREATE POLICY IF NOT EXISTS "Authenticated users can update menu images"
-ON storage.objects FOR UPDATE
-TO authenticated
-USING (bucket_id = 'menu-images')
-WITH CHECK (bucket_id = 'menu-images');
+===========================================
+POLICIES (Automatic when using Dashboard)
+===========================================
 
--- Allow authenticated users to update their uploaded inventory images
-CREATE POLICY IF NOT EXISTS "Authenticated users can update inventory images"
-ON storage.objects FOR UPDATE
-TO authenticated
-USING (bucket_id = 'inventory-images')
-WITH CHECK (bucket_id = 'inventory-images');
+When you create a PUBLIC bucket through the Dashboard, 
+Supabase automatically creates these policies:
 
--- Allow authenticated users to delete menu images
-CREATE POLICY IF NOT EXISTS "Authenticated users can delete menu images"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (bucket_id = 'menu-images');
+✅ Public SELECT (anyone can view images)
+✅ Authenticated INSERT (logged-in users can upload)
+✅ Authenticated UPDATE (logged-in users can update)
+✅ Authenticated DELETE (logged-in users can delete)
 
--- Allow authenticated users to delete inventory images
-CREATE POLICY IF NOT EXISTS "Authenticated users can delete inventory images"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (bucket_id = 'inventory-images');
+No manual policy creation needed!
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_storage_objects_bucket 
-ON storage.objects(bucket_id);
+===========================================
+ALTERNATIVE: SQL Method (Advanced)
+===========================================
 
-CREATE INDEX IF NOT EXISTS idx_storage_objects_name 
-ON storage.objects(name);
+If you MUST use SQL (not recommended), you need to:
+1. Switch to service_role in SQL Editor
+2. Or use Supabase CLI with admin privileges
 
--- Verify buckets were created
-SELECT * FROM storage.buckets WHERE id IN ('menu-images', 'inventory-images');
+But Dashboard method is MUCH easier and recommended.
+
+*/
+
+-- This is just for verification after creating buckets via Dashboard
+SELECT 
+  id,
+  name,
+  public,
+  file_size_limit,
+  allowed_mime_types,
+  created_at
+FROM storage.buckets 
+WHERE id IN ('menu-images', 'inventory-images');

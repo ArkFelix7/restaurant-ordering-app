@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MenuItem, Category, CartItem } from '@/lib/types'
+import { MenuItem, Category } from '@/lib/types'
 import { getCategories, getMenuItems } from '@/lib/db'
 import { MenuItemCard } from '@/components/menu-item-card'
 import { CategoryTabs } from '@/components/category-tabs'
 import { CartButton } from '@/components/cart-button'
+import { useCart } from '@/lib/cart-context'
 import { useRouter } from 'next/navigation'
 import { UtensilsCrossed } from 'lucide-react'
 
@@ -13,7 +14,7 @@ export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [activeCategory, setActiveCategory] = useState<string>('all')
-  const [cart, setCart] = useState<CartItem[]>([])
+  const { addToCart } = useCart()
   const router = useRouter()
 
   useEffect(() => {
@@ -28,36 +29,13 @@ export default function HomePage() {
     loadData()
   }, [])
 
-  useEffect(() => {
-    // Load cart from localStorage
-    const savedCart = localStorage.getItem('cart')
-    if (savedCart) {
-      setCart(JSON.parse(savedCart))
-    }
-  }, [])
-
-  useEffect(() => {
-    // Save cart to localStorage
-    localStorage.setItem('cart', JSON.stringify(cart))
-  }, [cart])
-
   const filteredItems =
     activeCategory === 'all'
       ? menuItems
       : menuItems.filter((item) => item.category_id === activeCategory)
 
   const handleAddToCart = (item: MenuItem) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((cartItem) => cartItem.item.id === item.id)
-      if (existingItem) {
-        return prevCart.map((cartItem) =>
-          cartItem.item.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem
-        )
-      }
-      return [...prevCart, { item, quantity: 1 }]
-    })
+    addToCart(item)
   }
 
   const handleViewCart = () => {
@@ -131,7 +109,7 @@ export default function HomePage() {
       </main>
 
       {/* Cart Button */}
-      <CartButton cart={cart} onClick={handleViewCart} />
+      <CartButton onClick={handleViewCart} />
     </div>
   )
 }

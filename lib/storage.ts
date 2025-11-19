@@ -68,6 +68,18 @@ export async function uploadImage(
   const supabase = createClient()
 
   try {
+    // Check authentication status
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      console.error('Authentication required for upload')
+      return {
+        url: '',
+        path: '',
+        error: 'You must be logged in to upload images. Please refresh and try again.',
+      }
+    }
+
     // Validate file
     const validation = validateImageFile(
       file,

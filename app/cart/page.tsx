@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { CartItem } from '@/lib/types'
+import { useState } from 'react'
+import { useCart } from '@/lib/cart-context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -12,46 +12,17 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 export default function CartPage() {
-  const [cart, setCart] = useState<CartItem[]>([])
+  const { cart, updateQuantity, removeFromCart, clearCart, totalAmount } = useCart()
+  const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    const savedCart = localStorage.getItem('cart')
-    if (savedCart) {
-      setCart(JSON.parse(savedCart))
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart))
-  }, [cart])
-
-  const updateQuantity = (itemId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(itemId)
+  const handleSubmitOrder = async () => {
+    if (!customerName.trim()) {
+      alert('Please enter your name')
       return
     }
-    setCart((prevCart) =>
-      prevCart.map((cartItem) =>
-        cartItem.item.id === itemId
-          ? { ...cartItem, quantity: newQuantity }
-          : cartItem
-      )
-    )
-  }
-
-  const removeItem = (itemId: string) => {
-    setCart((prevCart) => prevCart.filter((cartItem) => cartItem.item.id !== itemId))
-  }
-
-  const total = cart.reduce(
-    (sum, item) => sum + item.item.price * item.quantity,
-    0
-  )
-
-  const handleSubmitOrder = async () => {
     if (!customerPhone) {
       alert('Please enter your phone number')
       return
@@ -64,8 +35,9 @@ export default function CartPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          customer_name: customerName,
           customer_phone: customerPhone,
-          total_amount: total,
+          total_amount: totalAmount,
           items: cart.map((cartItem) => ({
             item_id: cartItem.item.id,
             item_name: cartItem.item.name,
@@ -78,7 +50,7 @@ export default function CartPage() {
 
       if (response.ok) {
         const order = await response.json()
-        localStorage.removeItem('cart')
+        clearCart()
         router.push(`/order-status/${order.id}`)
       } else {
         alert('Failed to submit order. Please try again.')
@@ -161,7 +133,7 @@ export default function CartPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeItem(cartItem.item.id)}
+                          onClick={() => removeFromCart(cartItem.item.id)}
                           className="flex-shrink-0"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -218,6 +190,19 @@ export default function CartPage() {
                   <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
                   <div className="space-y-4">
                     <div>
+                      <Label htmlFor="name">
+                        Full Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="name"
+                        type="text"
+                        placeholder="John Doe"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
                       <Label htmlFor="phone">
                         Phone Number <span className="text-destructive">*</span>
                       </Label>
@@ -239,7 +224,7 @@ export default function CartPage() {
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>${totalAmount.toFixed(2)}</span>
                   </div>
                 </div>
 

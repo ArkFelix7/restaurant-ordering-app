@@ -3,16 +3,14 @@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ShoppingCart } from 'lucide-react'
-import { CartItem } from '@/lib/types'
+import { useCart } from '@/lib/cart-context'
 
 interface CartButtonProps {
-  cart: CartItem[]
   onClick: () => void
 }
 
-export function CartButton({ cart, onClick }: CartButtonProps) {
-  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
-  const total = cart.reduce((sum, item) => sum + item.item.price * item.quantity, 0)
+export function CartButton({ onClick }: CartButtonProps) {
+  const { totalItems, totalAmount } = useCart()
 
   return (
     <Button
@@ -22,11 +20,11 @@ export function CartButton({ cart, onClick }: CartButtonProps) {
     >
       <ShoppingCart className="h-5 w-5 mr-2" />
       <span className="font-semibold">
-        View Cart {itemCount > 0 && `(${itemCount})`}
+        View Cart {totalItems > 0 && `(${totalItems})`}
       </span>
-      {total > 0 && (
+      {totalAmount > 0 && (
         <Badge variant="secondary" className="ml-3">
-          ${total.toFixed(2)}
+          ${totalAmount.toFixed(2)}
         </Badge>
       )}
     </Button>

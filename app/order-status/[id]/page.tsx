@@ -24,9 +24,34 @@ export default function OrderStatusPage() {
         
         // Calculate time remaining if order is approved
         if (data.status === 'approved' && data.estimated_ready_at) {
-          const now = new Date().getTime()
-          const readyAt = new Date(data.estimated_ready_at).getTime()
-          const remaining = Math.max(0, Math.floor((readyAt - now) / 1000 / 60))
+          const now = Date.now()
+          // Ensure timestamp is treated as UTC by adding 'Z' if missing
+          let timestamp = data.estimated_ready_at
+          if (typeof timestamp === 'string' && !timestamp.includes('Z') && !timestamp.includes('+')) {
+            timestamp = timestamp + 'Z'
+          }
+          const readyAt = new Date(timestamp).getTime()
+          
+          // Check if readyAt is valid
+          if (isNaN(readyAt)) {
+            console.error('Invalid timestamp:', { estimated_ready_at: data.estimated_ready_at, timestamp })
+            setTimeRemaining(null)
+            return
+          }
+          
+          const remainingMs = readyAt - now
+          const remaining = Math.max(0, Math.floor(remainingMs / 60000))
+          
+          console.log('Time calculation:', {
+            now: new Date(now).toISOString(),
+            readyAt: new Date(readyAt).toISOString(),
+            estimated_ready_at: data.estimated_ready_at,
+            timestamp,
+            remainingMs,
+            remaining,
+            preparation_time: data.preparation_time
+          })
+          
           setTimeRemaining(remaining)
         } else if (data.status === 'completed') {
           setTimeRemaining(0)
@@ -64,9 +89,34 @@ export default function OrderStatusPage() {
           
           // Update time remaining
           if (payload.new.status === 'approved' && payload.new.estimated_ready_at) {
-            const now = new Date().getTime()
-            const readyAt = new Date(payload.new.estimated_ready_at).getTime()
-            const remaining = Math.max(0, Math.floor((readyAt - now) / 1000 / 60))
+            const now = Date.now()
+            // Ensure timestamp is treated as UTC by adding 'Z' if missing
+            let timestamp = payload.new.estimated_ready_at
+            if (typeof timestamp === 'string' && !timestamp.includes('Z') && !timestamp.includes('+')) {
+              timestamp = timestamp + 'Z'
+            }
+            const readyAt = new Date(timestamp).getTime()
+            
+            // Check if readyAt is valid
+            if (isNaN(readyAt)) {
+              console.error('Invalid timestamp:', { estimated_ready_at: payload.new.estimated_ready_at, timestamp })
+              setTimeRemaining(null)
+              return
+            }
+            
+            const remainingMs = readyAt - now
+            const remaining = Math.max(0, Math.floor(remainingMs / 60000))
+            
+            console.log('Real-time update - Time calculation:', {
+              now: new Date(now).toISOString(),
+              readyAt: new Date(readyAt).toISOString(),
+              estimated_ready_at: payload.new.estimated_ready_at,
+              timestamp,
+              remainingMs,
+              remaining,
+              preparation_time: payload.new.preparation_time
+            })
+            
             setTimeRemaining(remaining)
           } else if (payload.new.status === 'completed') {
             setTimeRemaining(0)
