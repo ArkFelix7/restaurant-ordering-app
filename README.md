@@ -139,7 +139,6 @@ restaurant-ordering-app/
 ## 📖 Documentation
 
 - **[SETUP.md](./SETUP.md)**: Complete setup instructions
-- **[IMPLEMENTATION.md](./IMPLEMENTATION.md)**: Technical implementation details
 - **[restro.MD](./restro.MD)**: Original project requirements
 
 ## 🧪 Testing Flow
